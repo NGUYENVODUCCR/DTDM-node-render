@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Sửa bài viết</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h2>Sửa bài viết</h2>
+  <form method="POST" action="/edit/<%= post.id %>">
+    <input type="text" name="title" value="<%= post.title %>" required><br>
+    <textarea name="body"><%= post.body %></textarea><br>
+    <button type="submit">Cập nhật</button>
+    <a href="/">Quay lại</a>
+  </form>
+</body>
+</html>

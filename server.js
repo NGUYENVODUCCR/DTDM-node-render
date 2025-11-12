@@ -1,13 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const db = require('./db');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public')); // để load CSS
+app.set('view engine', 'ejs');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 
-// Khởi tạo bảng nếu chưa có
+// Khởi tạo bảng
 const init = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS posts (
@@ -18,77 +22,64 @@ const init = async () => {
     );
   `);
 };
-init().catch(err => {
-  console.error('DB init error', err);
-  process.exit(1);
-});
+init();
 
-// Create post
-app.post('/posts', async (req, res) => {
+// 🏠 Trang chủ: danh sách + tìm kiếm
+app.get('/', async (req, res) => {
   try {
-    const { title, body } = req.body;
-    const result = await db.query(
-      'INSERT INTO posts (title, body) VALUES ($1, $2) RETURNING *',
-      [title, body]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Không thể tạo post' });
-  }
-});
-
-// Edit post
-app.put('/posts/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, body } = req.body;
-    const result = await db.query(
-      'UPDATE posts SET title = $1, body = $2 WHERE id = $3 RETURNING *',
-      [title, body, id]
-    );
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Không tìm thấy post' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Không thể cập nhật post' });
-  }
-});
-
-// Delete post
-app.delete('/posts/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await db.query('DELETE FROM posts WHERE id = $1 RETURNING *', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Không tìm thấy post' });
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Không thể xóa post' });
-  }
-});
-
-// Search posts: /posts?search=keyword
-app.get('/posts', async (req, res) => {
-  try {
-    const { search } = req.query;
+    const search = req.query.search || '';
+    let result;
     if (search) {
       const q = `%${search}%`;
-      const result = await db.query(
+      result = await db.query(
         'SELECT * FROM posts WHERE title ILIKE $1 OR body ILIKE $1 ORDER BY created_at DESC',
         [q]
       );
-      return res.json(result.rows);
     } else {
-      const result = await db.query('SELECT * FROM posts ORDER BY created_at DESC');
-      return res.json(result.rows);
+      result = await db.query('SELECT * FROM posts ORDER BY created_at DESC');
     }
+    res.render('index', { posts: result.rows, search });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Lỗi khi lấy posts' });
+    res.send('Lỗi khi lấy danh sách bài viết');
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// 📝 Form thêm bài
+app.get('/add', (req, res) => {
+  res.render('form');
 });
+
+// Xử lý thêm bài
+app.post('/add', async (req, res) => {
+  try {
+    const { title, body } = req.body;
+    await db.query('INSERT INTO posts (title, body) VALUES ($1, $2)', [title, body]);
+    res.redirect('/');
+  } catch (err) {
+    res.send('Không thể thêm bài viết');
+  }
+});
+
+// 🛠 Form sửa bài
+app.get('/edit/:id', async (req, res) => {
+  const id = req.params.id;
+  const result = await db.query('SELECT * FROM posts WHERE id = $1', [id]);
+  res.render('edit', { post: result.rows[0] });
+});
+
+// Cập nhật bài viết
+app.post('/edit/:id', async (req, res) => {
+  const id = req.params.id;
+  const { title, body } = req.body;
+  await db.query('UPDATE posts SET title=$1, body=$2 WHERE id=$3', [title, body, id]);
+  res.redirect('/');
+});
+
+// ❌ Xóa bài
+app.get('/delete/:id', async (req, res) => {
+  const id = req.params.id;
+  await db.query('DELETE FROM posts WHERE id = $1', [id]);
+  res.redirect('/');
+});
+
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

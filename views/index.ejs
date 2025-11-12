@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Danh sách bài viết</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h1>📰 Danh sách bài viết</h1>
+
+  <form action="/" method="get">
+    <input type="text" name="search" value="<%= search %>" placeholder="Tìm bài...">
+    <button type="submit">Tìm kiếm</button>
+    <a href="/add">+ Thêm bài mới</a>
+  </form>
+
+  <% if (posts.length === 0) { %>
+    <p>Không có bài viết nào.</p>
+  <% } else { %>
+    <ul>
+      <% posts.forEach(p => { %>
+        <li>
+          <h3><%= p.title %></h3>
+          <p><%= p.body %></p>
+          <small><%= new Date(p.created_at).toLocaleString() %></small><br>
+          <a href="/edit/<%= p.id %>">✏️ Sửa</a>
+          <a href="/delete/<%= p.id %>" onclick="return confirm('Xóa bài này?')">🗑 Xóa</a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</body>
+</html>
