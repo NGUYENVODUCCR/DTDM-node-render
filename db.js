@@ -1,11 +1,12 @@
 const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL;
+const sslConfig = process.env.DATABASE_URL.includes('render.com')
+  ? { rejectUnauthorized: false }
+  : false;
 
 const pool = new Pool({
-  connectionString,
-  // with Render internal PG you may need ssl: { rejectUnauthorized: false } for external connections
-  // nếu cần: ssl: { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL,
+  ssl: sslConfig
 });
 
 module.exports = {
